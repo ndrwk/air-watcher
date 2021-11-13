@@ -1,0 +1,90 @@
+version: '3'
+
+services:
+
+  co2meter:
+    build:
+      dockerfile: co2meter.dockerfile
+      context: .
+    command:
+      - python
+      - main.py
+    environment:
+      METRIC_PORT: 8000
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_NAME: air-watcher
+      MONGODB_USERNAME: username
+      MONGODB_PASSWORD: password
+    privileged: true
+    restart: always
+    expose:
+      - 8000
+    networks:
+      - air-watcher
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    links:
+      - alertmanager:alertmanager
+    networks:
+      - air-watcher
+    restart: always
+
+  alertmanager:
+    image: prom/alertmanager
+    volumes:
+      - ./alertmanager/:/etc/alertmanager/
+    networks:
+      - air-watcher
+    restart: always
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+
+  grafana:
+    image: grafana/grafana
+    user: "472"
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - ./grafana/config.monitoring
+    networks:
+      - air-watcher
+    restart: always
+
+  mongodb:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: username
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - air-watcher
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  mongodb-data:
+    driver: local
+
+networks:
+  air-watcher:
+    driver: bridge
