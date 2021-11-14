@@ -9,6 +9,7 @@ services:
     command:
       - python
       - main.py
+      - runscheduler
     environment:
       METRIC_PORT: 8000
       MONGODB_HOST: mongodb
