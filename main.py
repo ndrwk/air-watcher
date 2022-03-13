@@ -12,12 +12,13 @@ def main(ctx: click.core.Context) -> None:
 
 
 @main.command()
+@click.option('--port', '-p', default=9090)
 @click.pass_context
-def runscheduler(ctx: click.core.Context) -> None:
+def runscheduler(ctx: click.core.Context, port: int) -> None:
     """Run scheduler.
 
     """
-    run_scheduler()
+    run_scheduler(port)
 
 
 if __name__ == '__main__':

@@ -2,6 +2,18 @@ version: '3'
 
 services:
 
+  webserver:
+    image: nginx:alpine
+    restart: always
+    tty: true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - air_watcher
+
   co2meter:
     build:
       dockerfile: co2meter.dockerfile
@@ -10,19 +22,14 @@ services:
       - python
       - main.py
       - runscheduler
-    environment:
-      METRIC_PORT: 8000
-      MONGODB_HOST: mongodb
-      MONGODB_PORT: 27017
-      MONGODB_NAME: air-watcher
-      MONGODB_USERNAME: username
-      MONGODB_PASSWORD: password
+      - --port
+      - "8000"
     privileged: true
     restart: always
     expose:
-      - 8000
+      - "8000"
     networks:
-      - air-watcher
+      - air_watcher
 
   prometheus:
     image: prom/prometheus
@@ -37,7 +44,7 @@ services:
     links:
       - alertmanager:alertmanager
     networks:
-      - air-watcher
+      - air_watcher
     restart: always
 
   alertmanager:
@@ -45,7 +52,7 @@ services:
     volumes:
       - ./alertmanager/:/etc/alertmanager/
     networks:
-      - air-watcher
+      - air_watcher
     restart: always
     command:
       - '--config.file=/etc/alertmanager/config.yml'
@@ -56,36 +63,23 @@ services:
     user: "472"
     depends_on:
       - prometheus
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning/:/etc/grafana/provisioning/
     env_file:
       - ./grafana/config.monitoring
     networks:
-      - air-watcher
+      - air_watcher
     restart: always
-
-  mongodb:
-    image: mongo
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: username
-      MONGO_INITDB_ROOT_PASSWORD: password
-    volumes:
-      - mongodb-data:/data/db
-    networks:
-      - air-watcher
 
 volumes:
   prometheus_data:
     driver: local
   grafana_data:
     driver: local
-  mongodb-data:
-    driver: local
 
 networks:
-  air-watcher:
+  air_watcher:
     driver: bridge
